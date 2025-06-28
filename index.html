@@ -186,6 +186,11 @@
                         <div id="nutrition-guide" class="grid md:grid-cols-3 gap-6"></div>
                     </section>
                     <section class="bg-white p-6 rounded-2xl shadow-sm border border-zinc-200">
+                        <h2 class="text-2xl font-bold text-teal-600 mb-3">Nourishing the Mind: Foods for Brain Health & Focus</h2>
+                        <p class="text-zinc-600 mb-6">A sharp mind is as important as a strong body. The same whole-food approach that builds muscle also fuels your brain, enhancing focus, memory, and cognitive function.</p>
+                        <div id="brain-food-guide" class="grid md:grid-cols-2 lg:grid-cols-4 gap-6"></div>
+                    </section>
+                    <section class="bg-white p-6 rounded-2xl shadow-sm border border-zinc-200">
                         <h2 class="text-2xl font-bold text-teal-600 mb-3">The Anabolic Power of Sleep</h2>
                         <p class="text-zinc-600 mb-6">Muscles are built during rest, not in the gym. Sleep is your most powerful recovery tool. During deep sleep, your body releases crucial muscle-building hormones like HGH and Testosterone. Prioritizing 7-9 hours of quality sleep is non-negotiable for results.</p>
                         <div class="chart-container">
@@ -376,7 +381,7 @@ const AppData = {
         },
     },
     progressiveOverload: [
-        { title: 'More Reps', icon: '�', description: 'The simplest method. Aim to add 1-2 more reps to each set each week until you reach the top of your target rep range (e.g., 15 reps).'},
+        { title: 'More Reps', icon: '🔄', description: 'The simplest method. Aim to add 1-2 more reps to each set each week until you reach the top of your target rep range (e.g., 15 reps).'},
         { title: 'More Sets', icon: '➕', description: 'Increase total volume by adding an extra set to an exercise. A powerful stimulus for growth, but add sets judiciously to allow for recovery.'},
         { title: 'Less Rest', icon: '⏱️', description: 'Shorten rest periods between sets (e.g., from 90s to 75s). This increases workout density and metabolic stress.'},
         { title: 'Better Form', icon: '🧘', description: 'Perform the same reps with stricter form and a stronger mind-muscle connection. This places more direct stress on the target muscle.'},
@@ -406,7 +411,7 @@ const AppData = {
             foods: ['Chicken/Turkey Breast', 'Fish (Salmon, Tuna)', 'Eggs', 'Greek Yogurt', 'Lean Beef', 'Tofu/Tempeh']
         },
         'Complex Carbohydrates': {
-            icon: '🍠',
+            icon: '�',
             description: 'The primary fuel source for your high-intensity workouts.',
             foods: ['Oats', 'Brown Rice', 'Quinoa', 'Sweet Potatoes', 'Beans/Lentils', 'Whole Grains']
         },
@@ -414,6 +419,28 @@ const AppData = {
             icon: '🥑',
             description: 'Crucial for hormone regulation, including testosterone production.',
             foods: ['Avocados', 'Nuts (Almonds, Walnuts)', 'Seeds (Flax, Chia)', 'Olive Oil', 'Fatty Fish']
+        }
+    },
+    brainFoods: {
+        'Oily Fish': {
+            icon: '🐟',
+            description: 'Rich in Omega-3 fatty acids, essential for building brain cells and improving memory.',
+            foods: ['Salmon', 'Mackerel', 'Sardines', 'Herring']
+        },
+        'Berries': {
+            icon: '🍓',
+            description: 'Packed with antioxidants that protect the brain from damage and reduce inflammation.',
+            foods: ['Blueberries', 'Strawberries', 'Blackberries', 'Raspberries']
+        },
+        'Nuts & Seeds': {
+            icon: '🥜',
+            description: 'Excellent sources of Vitamin E, which helps protect against age-related cognitive decline.',
+            foods: ['Walnuts', 'Almonds', 'Flax Seeds', 'Pumpkin Seeds']
+        },
+        'Leafy Greens': {
+            icon: '🥬',
+            description: 'Loaded with nutrients like Vitamin K and lutein, linked to slower cognitive decline.',
+            foods: ['Spinach', 'Kale', 'Collard Greens', 'Broccoli']
         }
     },
     kegels: {
@@ -437,6 +464,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const warmupContainer = document.getElementById('warm-up-protocol');
     const cooldownContainer = document.getElementById('cool-down-protocol');
     const nutritionContainer = document.getElementById('nutrition-guide');
+    const brainFoodContainer = document.getElementById('brain-food-guide');
     const kegelsContainer = document.getElementById('kegels-guide');
     const modalBackdrop = document.getElementById('exercise-modal-backdrop');
     const modalBody = document.getElementById('modal-body');
@@ -541,6 +569,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function populateVitalityHub() {
         nutritionContainer.innerHTML = Object.entries(AppData.nutrition).map(([key, value]) => `
+            <div class="bg-zinc-50 border border-zinc-200 rounded-lg p-4">
+                <div class="flex items-center mb-3">
+                     <span class="text-3xl mr-3">${value.icon}</span>
+                     <h4 class="text-lg font-bold text-zinc-800">${key}</h4>
+                </div>
+                <p class="text-sm text-zinc-600 mb-3">${value.description}</p>
+                <ul class="text-sm space-y-1">
+                    ${value.foods.map(food => `<li class="text-zinc-700">- ${food}</li>`).join('')}
+                </ul>
+            </div>
+        `).join('');
+
+        brainFoodContainer.innerHTML = Object.entries(AppData.brainFoods).map(([key, value]) => `
             <div class="bg-zinc-50 border border-zinc-200 rounded-lg p-4">
                 <div class="flex items-center mb-3">
                      <span class="text-3xl mr-3">${value.icon}</span>
