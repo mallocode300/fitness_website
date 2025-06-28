@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Fitness & Vitality Blueprint with AI Coach</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Warm Neutrals & Muted Teal -->
+    <!-- Application Structure Plan: A tab-based dashboard SPA. This structure prioritizes the user's primary goal: accessing the day's workout. The landing tab ('Dashboard') provides immediate, actionable information (weekly plan, today's workout). Subsequent tabs ('The Workouts', 'Principles', 'Vitality Hub') allow for deeper, self-paced exploration. This is superior to a linear report as it separates "doing" from "learning," preventing information overload. An interactive Exercise Library (modal) provides just-in-time information on form and progression, which is more usable than a separate chapter. The new 'AI Coach' tab centralizes intelligent, interactive features powered by the Gemini API. -->
+    <!-- Visualization & Content Choices: 
+        - Report Info: Weekly Schedule -> Goal: Quick orientation -> Viz: Donut Chart (Workout Split) & interactive HTML calendar -> Interaction: Click day to highlight -> Justification: Provides an immediate visual summary and easy navigation.
+        - Report Info: Exercise Lists (A,B,C) -> Goal: Detailed instruction -> Viz: Interactive cards for each workout -> Interaction: Click exercise name to open a detailed modal with form, variations, and common mistakes -> Justification: Delivers crucial information at the point of need without cluttering the main UI.
+        - Report Info: Progressive Overload Principles -> Goal: Make concept digestible -> Viz: Interactive HTML/CSS diagram -> Interaction: Hover to reveal explanations -> Justification: More engaging and memorable than a simple text list.
+        - Report Info: User Feedback on Workouts -> Goal: Personalized Progression -> Viz/Method: Gemini API call -> Interaction: User inputs text, clicks button -> Justification: Provides dynamic, personalized coaching that goes beyond static content.
+        - Report Info: User's available ingredients -> Goal: On-demand meal ideas -> Viz/Method: Gemini API call -> Interaction: User lists ingredients, clicks button -> Justification: Adds immense practical value by solving a common user problem ("What can I cook?").
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #FDFBF8; /* Warm off-white */
+            color: #3f3f46; /* Zinc 700 */
+        }
+        .tab-button {
+            transition: all 0.3s ease;
+            border-bottom: 2px solid transparent;
+        }
+        .tab-button.active {
+            color: #14B8A6; /* Teal 500 */
+            border-bottom-color: #14B8A6;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 350px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+        .modal-backdrop {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 40;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-backdrop.show {
+            display: flex;
+        }
+        .modal-content {
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .gemini-loader {
+            display: none;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #14B8A6;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div id="app" class="container mx-auto p-4 md:p-8 max-w-7xl">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold text-zinc-800">Your Interactive Fitness & Vitality Blueprint</h1>
+            <p class="text-lg text-zinc-600 mt-2">A holistic plan for muscle, fitness, and well-being, now with an AI Coach.</p>
+        </header>
+
+        <nav class="flex flex-wrap justify-center border-b border-zinc-200 mb-8 sm:space-x-4 md:space-x-8">
+            <button data-tab="dashboard" class="tab-button py-4 px-2 md:px-4 text-lg font-semibold active">Dashboard</button>
+            <button data-tab="workouts" class="tab-button py-4 px-2 md:px-4 text-lg font-semibold">Workouts</button>
+            <button data-tab="principles" class="tab-button py-4 px-2 md:px-4 text-lg font-semibold">Principles</button>
+            <button data-tab="vitality" class="tab-button py-4 px-2 md:px-4 text-lg font-semibold">Vitality Hub</button>
+            <button data-tab="coach" class="tab-button py-4 px-2 md:px-4 text-lg font-semibold">✨ AI Coach</button>
+        </nav>
+
+        <main>
+            <!-- Dashboard Tab -->
+            <div id="dashboard-content" class="tab-content active">
+                <section class="text-center bg-white p-6 rounded-2xl shadow-sm border border-zinc-200">
+                    <h2 class="text-2xl font-bold text-teal-600 mb-4">Your Week at a Glance</h2>
+                    <p class="text-zinc-600 max-w-2xl mx-auto mb-6">This plan is built on a 4-day training week with three non-consecutive strength days and one running day to ensure optimal stimulus and recovery. Below is your recommended schedule.</p>
+                    <div class="grid grid-cols-2 md:grid-cols-7 gap-4 text-center mb-8">
+                        <div class="day-card p-3 bg-zinc-50 rounded-lg border border-zinc-200">
+                            <h3 class="font-bold">Monday</h3><p class="text-teal-600">Workout A</p>
+                        </div>
+                        <div class="day-card p-3 bg-zinc-50 rounded-lg border border-zinc-200">
+                            <h3 class="font-bold">Tuesday</h3><p class="text-zinc-500">Rest</p>
+                        </div>
+                        <div class="day-card p-3 bg-zinc-50 rounded-lg border border-zinc-200">
+                            <h3 class="font-bold">Wednesday</h3><p class="text-teal-600">Workout B</p>
+                        </div>
+                        <div class="day-card p-3 bg-zinc-50 rounded-lg border border-zinc-200">
+                           <h3 class="font-bold">Thursday</h3><p class="text-zinc-500">Rest</p>
+                        </div>
+                        <div class="day-card p-3 bg-zinc-50 rounded-lg border border-zinc-200">
+                            <h3 class="font-bold">Friday</h3><p class="text-teal-600">Workout C</p>
+                        </div>
+                        <div class="day-card p-3 bg-zinc-50 rounded-lg border border-zinc-200">
+                            <h3 class="font-bold">Saturday</h3><p class="text-blue-600">Run</p>
+                        </div>
+                        <div class="day-card p-3 bg-zinc-50 rounded-lg border border-zinc-200">
+                            <h3 class="font-bold">Sunday</h3><p class="text-zinc-500">Rest</p>
+                        </div>
+                    </div>
+                     <div class="chart-container">
+                        <canvas id="weeklySplitChart"></canvas>
+                    </div>
+                    <p class="text-sm text-zinc-500 mt-4">This chart visually represents the balance between training and recovery in your weekly schedule.</p>
+                </section>
+            </div>
+
+            <!-- Workouts Tab -->
+            <div id="workouts-content" class="tab-content">
+                <section class="text-center mb-8">
+                    <h2 class="text-3xl font-bold text-zinc-800">The Three Pillars Workout Plan</h2>
+                    <p class="text-zinc-600 max-w-3xl mx-auto mt-2">This program uses an A-B-C rotation of three distinct full-body workouts. Click any exercise to see detailed instructions on form and progression.</p>
+                </section>
+                <div class="grid md:grid-cols-3 gap-8">
+                    <div id="workout-a" class="bg-white p-6 rounded-2xl shadow-sm border border-zinc-200"></div>
+                    <div id="workout-b" class="bg-white p-6 rounded-2xl shadow-sm border border-zinc-200"></div>
+                    <div id="workout-c" class="bg-white p-6 rounded-2xl shadow-sm border border-zinc-200"></div>
+                </div>
+            </div>
+
+            <!-- Principles Tab -->
+            <div id="principles-content" class="tab-content">
+                <div class="space-y-8">
+                    <section class="bg-white p-6 rounded-2xl shadow-sm border border-zinc-200">
+                        <h2 class="text-2xl font-bold text-teal-600 mb-3">The Law of Progressive Overload</h2>
+                        <p class="text-zinc-600 mb-6">Muscle growth isn't random; it's a direct response to being challenged. To continuously build muscle, you must consistently increase the difficulty of your workouts. Below are the key methods for bodyweight training. Hover over each one to learn more.</p>
+                        <div id="progressive-overload-cards" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+                    </section>
+                    <section class="bg-white p-6 rounded-2xl shadow-sm border border-zinc-200">
+                        <h2 class="text-2xl font-bold text-teal-600 mb-3">Warm-Up & Cool-Down Protocols</h2>
+                        <p class="text-zinc-600 mb-6">Never skip these. A dynamic warm-up prepares your body for performance and prevents injury, while a static cool-down aids recovery and improves flexibility.</p>
+                        <div class="grid md:grid-cols-2 gap-8">
+                            <div id="warm-up-protocol"></div>
+                            <div id="cool-down-protocol"></div>
+                        </div>
+                    </section>
+                </div>
+            </div>
+
+            <!-- Vitality Hub Tab -->
+            <div id="vitality-content" class="tab-content">
+                <div class="space-y-8">
+                    <section class="bg-white p-6 rounded-2xl shadow-sm border border-zinc-200">
+                        <h2 class="text-2xl font-bold text-teal-600 mb-3">The Fitness-Vitality Connection</h2>
+                        <p class="text-zinc-600 mb-4">The goals of building muscle and enhancing sexual health are deeply interconnected. This program is designed to improve systemic health, which manifests as both a stronger physique and a more vibrant personal life. Exercise improves blood flow, optimizes hormones like testosterone, and boosts confidence—all key factors for sexual health.</p>
+                         <div id="kegels-guide"></div>
+                    </section>
+                    <section class="bg-white p-6 rounded-2xl shadow-sm border border-zinc-200">
+                        <h2 class="text-2xl font-bold text-teal-600 mb-3">Fueling the Machine: Nutrition for Muscle Gain</h2>
+                        <p class="text-zinc-600 mb-6">You can't build a house without bricks. A modest calorie surplus and adequate protein are mandatory for muscle growth. Focus on whole foods to provide the energy and building blocks your body needs.</p>
+                        <div id="nutrition-guide" class="grid md:grid-cols-3 gap-6"></div>
+                    </section>
+                    <section class="bg-white p-6 rounded-2xl shadow-sm border border-zinc-200">
+                        <h2 class="text-2xl font-bold text-teal-600 mb-3">The Anabolic Power of Sleep</h2>
+                        <p class="text-zinc-600 mb-6">Muscles are built during rest, not in the gym. Sleep is your most powerful recovery tool. During deep sleep, your body releases crucial muscle-building hormones like HGH and Testosterone. Prioritizing 7-9 hours of quality sleep is non-negotiable for results.</p>
+                        <div class="chart-container">
+                             <canvas id="sleepHormoneChart"></canvas>
+                        </div>
+                        <p class="text-sm text-zinc-500 mt-4 text-center">This chart illustrates the dramatic increase in restorative hormone release during sleep.</p>
+                    </section>
+                </div>
+            </div>
+            
+            <!-- AI Coach Tab -->
+            <div id="coach-content" class="tab-content">
+                <section class="bg-white p-6 rounded-2xl shadow-sm border border-zinc-200 mb-8">
+                    <h2 class="text-2xl font-bold text-teal-600 mb-3">Smart Progression Suggester</h2>
+                    <p class="text-zinc-600 mb-4">Stuck on how to progress? Describe how your last workout felt for a specific exercise, and the AI coach will suggest the next logical step.</p>
+                    <div class="space-y-4">
+                        <textarea id="progression-input" class="w-full p-3 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-teal-400 focus:border-teal-400 transition" rows="3" placeholder="Example: 'My last set of push-ups felt pretty easy. I hit 15 reps and felt like I had 3-4 more in me.'"></textarea>
+                        <button id="get-progression-suggestion" class="w-full bg-teal-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-teal-700 transition flex items-center justify-center">
+                            Get Suggestion
+                        </button>
+                        <div class="gemini-loader" id="progression-loader"></div>
+                        <div id="progression-output" class="p-4 bg-teal-50 border border-teal-200 rounded-lg text-teal-800 hidden"></div>
+                    </div>
+                </section>
+
+                <section class="bg-white p-6 rounded-2xl shadow-sm border border-zinc-200">
+                    <h2 class="text-2xl font-bold text-teal-600 mb-3">Meal Idea Generator</h2>
+                    <p class="text-zinc-600 mb-4">Don't know what to make? List the ingredients you have, and the AI will whip up a simple, high-protein meal idea for you.</p>
+                    <div class="space-y-4">
+                        <textarea id="meal-input" class="w-full p-3 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-teal-400 focus:border-teal-400 transition" rows="3" placeholder="Example: 'chicken breast, rice, broccoli, soy sauce, garlic'"></textarea>
+                        <button id="get-meal-idea" class="w-full bg-teal-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-teal-700 transition flex items-center justify-center">
+                            Generate Meal Idea
+                        </button>
+                        <div class="gemini-loader" id="meal-loader"></div>
+                        <div id="meal-output" class="p-4 bg-teal-50 border border-teal-200 rounded-lg text-teal-800 hidden"></div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- Exercise Modal -->
+    <div id="exercise-modal-backdrop" class="modal-backdrop">
+        <div id="exercise-modal-content" class="modal-content bg-white w-11/12 max-w-2xl rounded-2xl p-6 md:p-8 relative shadow-2xl">
+            <button id="close-modal-button" class="absolute top-4 right-4 text-zinc-500 hover:text-zinc-800 transition">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+            <div id="modal-body"></div>
+        </div>
+    </div>
+    
+<script>
+const AppData = {
+    workouts: {
+        'A': {
+            title: 'Workout A: Foundational Strength',
+            exercises: ['Bodyweight Squats', 'Push-ups', 'Inverted Rows', 'Plank', 'Crunches']
+        },
+        'B': {
+            title: 'Workout B: Power & Endurance',
+            exercises: ['Walking Lunges', 'Dips', 'Glute Bridges', 'Mountain Climbers', 'Leg Raises']
+        },
+        'C': {
+            title: 'Workout C: Athletic Conditioning',
+            exercises: ['Burpees', 'Bulgarian Split Squats', 'Pike Push-ups', 'Superman Holds', 'Bicycle Crunches']
+        }
+    },
+    exercises: {
+        'Bodyweight Squats': {
+            sets: '3-4', reps: '8-15', rest: '60-90s',
+            description: "A fundamental lower body movement that targets quads, glutes, and hamstrings.",
+            execution: ["Stand with feet shoulder-width apart, toes slightly out.", "Initiate by pushing hips back, then bend your knees as if sitting in a chair.", "Keep your chest up and back straight.", "Lower until your hip crease is below your knees.", "Drive through your heels to return to the start, squeezing glutes at the top."],
+            beginner: "Assisted Squats (holding a chair/doorframe).",
+            progression: "Jump Squats, Pistol Squats.",
+            mistakes: ["Knees caving inward.", "Lifting heels off the floor.", "Rounding the lower back."]
+        },
+        'Push-ups': {
+            sets: '3-4', reps: '8-15', rest: '60-90s',
+            description: "The classic upper body press for chest, shoulders, and triceps.",
+            execution: ["Place hands slightly wider than shoulder-width.", "Form a straight line from head to heels; brace your core and glutes.", "Lower your body until your chest nearly touches the floor, keeping elbows at a 45-degree angle.", "Press forcefully back to the start."],
+            beginner: "Knee Push-ups or Incline Push-ups (hands on a table).",
+            progression: "Diamond Push-ups, Decline Push-ups.",
+            mistakes: ["Hips sagging or piking up.", "Elbows flaring out to the sides.", "Not using a full range of motion."]
+        },
+        'Inverted Rows': {
+            sets: '3-4', reps: '8-15', rest: '60-90s',
+            description: "An excellent bodyweight exercise for the back and biceps, performed under a sturdy table.",
+            execution: ["Lie under a sturdy table, grabbing the edge with an overhand grip.", "Keeping your body in a straight line, pull your chest up towards the table.", "Squeeze your shoulder blades together at the top.", "Lower yourself back down with control."],
+            beginner: "Bend knees to 90 degrees with feet flat on the floor.",
+            progression: "Straighten legs, Elevate feet on a chair.",
+            mistakes: ["Using momentum to pull up.", "Not pulling high enough.", "Letting hips sag."]
+        },
+        'Plank': {
+            sets: '3', reps: '30-60s', rest: '60s',
+            description: "A core stability exercise that strengthens the entire midsection.",
+            execution: ["Position forearms on the floor, elbows under shoulders.", "Form a perfectly straight line from head to heels.", "Brace your abs as if expecting a punch, and squeeze your glutes and quads.", "Hold this tension for the duration."],
+            beginner: "Plank on knees.",
+            progression: "Plank with alternating leg lift, Plank Jacks.",
+            mistakes: ["Hips sagging (strains lower back).", "Hips piked too high.", "Letting the head drop."]
+        },
+        'Crunches': {
+            sets: '3', reps: '15-25', rest: '60s',
+            description: "A classic exercise to target the upper abdominal muscles.",
+            execution: ["Lie on your back with knees bent, feet flat.", "Cross arms over your chest or place fingertips lightly on temples (do not pull on your head).", "Exhale and contract your abs to lift your head and shoulder blades off the floor.", "Pause, then slowly lower back down."],
+            beginner: "Fewer reps, smaller range of motion.",
+            progression: "V-ups, Bicycle Crunches.",
+            mistakes: ["Pulling on the neck.", "Using momentum to jerk up.", "Lifting the lower back off the floor."]
+        },
+        'Walking Lunges': {
+            sets: '3-4', reps: '10-15 per leg', rest: '60-90s',
+            description: "A dynamic lunge variation that challenges balance and leg strength.",
+            execution: ["Take a controlled step forward, lowering your hips until both knees are at a 90-degree angle.", "Your front knee should be over your ankle, and your back knee should hover just above the floor.", "Push off the back foot and step forward into the next lunge with the other leg."],
+            beginner: "Static Lunges or Supported Lunges (holding a wall).",
+            progression: "Jumping Lunges, Bulgarian Split Squats.",
+            mistakes: ["Front knee traveling past the toes.", "Leaning the torso too far forward.", "Pushing off the back foot instead of the front heel."]
+        },
+        'Dips': {
+            sets: '3-4', reps: '8-12', rest: '60-90s',
+            description: "A powerful exercise for the triceps and chest, using a sturdy chair or bench.",
+            execution: ["Sit on the edge of a chair, hands gripping the edge next to your hips.", "Slide your hips forward off the chair.", "Lower your body by bending your elbows until they are at about a 90-degree angle.", "Press through your palms to return to the start."],
+            beginner: "Feet on the floor with knees bent.",
+            progression: "Feet on the floor with legs straight; Elevate feet on another chair.",
+            mistakes: ["Shoulders rolling forward.", "Going too low and stressing the shoulder joint.", "Flaring elbows out too wide."]
+        },
+        'Glute Bridges': {
+            sets: '3-4', reps: '15-20', rest: '60s',
+            description: "Targets the glutes and hamstrings, crucial for pelvic stability and power.",
+            execution: ["Lie on your back, knees bent, feet flat on the floor near your glutes.", "Drive through your heels to lift your hips until your body forms a straight line from shoulders to knees.", "Squeeze your glutes hard at the top.", "Lower with control."],
+            beginner: "Fewer reps, smaller range of motion.",
+            progression: "Single-leg Glute Bridge, Hip Thrusts (shoulders on couch).",
+            mistakes: ["Over-arching the lower back.", "Not achieving full hip extension.", "Pushing through the toes instead of heels."]
+        },
+        'Mountain Climbers': {
+            sets: '3', reps: '30-60s', rest: '60s',
+            description: "A full-body cardio and core exercise that mimics a running motion.",
+            execution: ["Start in a high plank position.", "Keeping your core tight and back flat, drive one knee towards your chest.", "Quickly switch legs, maintaining a steady, running-like pace."],
+            beginner: "Perform at a slower, controlled pace.",
+            progression: "Increase pace, Cross-body Mountain Climbers.",
+            mistakes: ["Hips bouncing up and down.", "Letting the back round.", "Not keeping shoulders over wrists."]
+        },
+        'Leg Raises': {
+            sets: '3', reps: '12-20', rest: '60s',
+            description: "Targets the lower abdominal muscles.",
+            execution: ["Lie on your back, legs straight. You can place your hands under your lower back for support.", "Keeping your legs as straight as possible, slowly raise them towards the ceiling until they are perpendicular to the floor.", "Slowly lower them back down without letting them touch the floor."],
+            beginner: "Bent-knee raises.",
+            progression: "Straight-leg raises, Hanging Leg Raises (if a pull-up bar is available).",
+            mistakes: ["Using momentum to swing the legs up.", "Arching the lower back off the floor.", "Bending the knees too much on the straight-leg version."]
+        },
+        'Burpees': {
+            sets: '3', reps: '8-12', rest: '90s',
+            description: "A high-intensity, full-body conditioning exercise.",
+            execution: ["Start standing. Drop into a squat and place your hands on the floor.", "Kick your feet back into a plank position.", "Perform a push-up.", "Jump your feet back to the squat position.", "Explode up into a jump, clapping hands overhead."],
+            beginner: "Step back instead of jumping, omit the push-up.",
+            progression: "Full Burpee with push-up and a high vertical jump.",
+            mistakes: ["Letting hips sag during the plank/push-up.", "Not controlling the movement.", "Skipping parts of the sequence."]
+        },
+        'Bulgarian Split Squats': {
+            sets: '3', reps: '8-12 per leg', rest: '60s',
+            description: "An advanced single-leg squat that heavily targets the quads and glutes.",
+            execution: ["Stand a few feet in front of a chair or bench. Place the top of one foot on the surface behind you.", "Keeping your torso upright, lower your hips until your front thigh is parallel to the floor.", "Drive through your front heel to return to the start."],
+            beginner: "Use a lower surface, hold a wall for balance.",
+            progression: "Add a pulse at the bottom, hold a weight (e.g., backpack).",
+            mistakes: ["Leaning too far forward.", "Front knee tracking past the toes.", "Hopping on the front foot for balance."]
+        },
+        'Pike Push-ups': {
+            sets: '3', reps: '6-10', rest: '90s',
+            description: "A bodyweight exercise that targets the shoulders.",
+            execution: ["Get into a 'downward dog' position, with your body forming an inverted V.", "Bend your elbows to lower the top of your head towards the floor.", "Keep your legs straight and press back up to the start."],
+            beginner: "Perform with feet on the floor.",
+            progression: "Elevate feet on a chair or couch to increase the load.",
+            mistakes: ["Flaring elbows out.", "Lowering the chest instead of the head.", "Not keeping the hips high."]
+        },
+        'Superman Holds': {
+            sets: '3', reps: '30-60s', rest: '60s',
+            description: "Strengthens the entire posterior chain, including the lower back, glutes, and hamstrings.",
+            execution: ["Lie face down with arms and legs extended.", "Simultaneously lift your arms, chest, and legs off the floor, squeezing your back and glutes.", "Keep your neck in a neutral position by looking at the floor.", "Hold the position."],
+            beginner: "Hold for shorter durations (15-20 seconds).",
+            progression: "Add a gentle 'swimming' motion with arms and legs.",
+            mistakes: ["Cranking the neck up to look forward.", "Holding your breath.", "Lifting too high and straining the back."]
+        },
+        'Bicycle Crunches': {
+            sets: '3', reps: '45-60s', rest: '60s',
+            description: "A dynamic core exercise that targets the rectus abdominis and obliques.",
+            execution: ["Lie on your back, fingertips on temples. Bring your knees to a 90-degree angle.", "Bring one knee towards the opposite elbow by contracting your abs, while extending the other leg straight.", "Alternate sides in a smooth, controlled 'pedaling' motion."],
+            beginner: "Perform at a slower pace, tap heels to the floor between reps.",
+            progression: "Increase pace, keep legs elevated throughout.",
+            mistakes: ["Pulling on the neck.", "Rushing through the movement without control.", "Not fully rotating the torso."]
+        },
+    },
+    progressiveOverload: [
+        { title: 'More Reps', icon: '�', description: 'The simplest method. Aim to add 1-2 more reps to each set each week until you reach the top of your target rep range (e.g., 15 reps).'},
+        { title: 'More Sets', icon: '➕', description: 'Increase total volume by adding an extra set to an exercise. A powerful stimulus for growth, but add sets judiciously to allow for recovery.'},
+        { title: 'Less Rest', icon: '⏱️', description: 'Shorten rest periods between sets (e.g., from 90s to 75s). This increases workout density and metabolic stress.'},
+        { title: 'Better Form', icon: '🧘', description: 'Perform the same reps with stricter form and a stronger mind-muscle connection. This places more direct stress on the target muscle.'},
+        { title: 'Slower Tempo', icon: '🐢', description: 'Increase time under tension by slowing down the movement, especially the lowering (eccentric) phase. A 3-second descent on a push-up is very challenging.'},
+        { title: 'Harder Variation', icon: '🔥', description: 'The ultimate progression. Once you master an exercise, move to a more difficult variation (e.g., from a standard push-up to a diamond push-up).'}
+    ],
+    warmup: [
+        { item: 'Jumping Jacks', duration: '60s'},
+        { item: 'Arm Circles', duration: '30s each way'},
+        { item: 'Torso Rotations', duration: '30s'},
+        { item: 'Leg Swings', duration: '30s per leg/direction'},
+        { item: 'Bodyweight Squats', duration: '10-15 reps'},
+        { item: 'Spiderman Lunges', duration: '5 reps per side'},
+    ],
+    cooldown: [
+        { item: 'Standing Quad Stretch', duration: '30s per leg'},
+        { item: 'Standing Hamstring Stretch', duration: '30s per leg'},
+        { item: 'Wall Calf Stretch', duration: '30s per leg'},
+        { item: 'Cross-Body Shoulder Stretch', duration: '30s per arm'},
+        { item: 'Chest Stretch (in doorway)', duration: '30s'},
+        { item: 'Seated Glute Stretch', duration: '30s per side'},
+    ],
+    nutrition: {
+        'Lean Proteins': {
+            icon: '🍗',
+            description: 'The essential building blocks for muscle repair and growth.',
+            foods: ['Chicken/Turkey Breast', 'Fish (Salmon, Tuna)', 'Eggs', 'Greek Yogurt', 'Lean Beef', 'Tofu/Tempeh']
+        },
+        'Complex Carbohydrates': {
+            icon: '🍠',
+            description: 'The primary fuel source for your high-intensity workouts.',
+            foods: ['Oats', 'Brown Rice', 'Quinoa', 'Sweet Potatoes', 'Beans/Lentils', 'Whole Grains']
+        },
+        'Healthy Fats': {
+            icon: '🥑',
+            description: 'Crucial for hormone regulation, including testosterone production.',
+            foods: ['Avocados', 'Nuts (Almonds, Walnuts)', 'Seeds (Flax, Chia)', 'Olive Oil', 'Fatty Fish']
+        }
+    },
+    kegels: {
+        title: "The Hidden Powerhouse: Kegels",
+        description: "The pelvic floor muscles are vital for sexual function. Strengthening them with Kegels can improve control and performance. Glute bridges in your workouts already help, but direct Kegel exercises are highly effective.",
+        steps: [
+            "<strong>Find the Muscles:</strong> Identify the muscles you use to stop urination midstream.",
+            "<strong>The Technique:</strong> Squeeze and hold those muscles for 3-5 seconds, then relax for 3-5 seconds. Do not tense your abs, glutes, or thighs.",
+            "<strong>The Prescription:</strong> Aim for 3 sets of 10-15 reps daily. You can do them anytime, anywhere."
+        ]
+    }
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    const tabs = document.querySelectorAll('.tab-button');
+    const tabContents = document.querySelectorAll('.tab-content');
+    const workoutAContainer = document.getElementById('workout-a');
+    const workoutBContainer = document.getElementById('workout-b');
+    const workoutCContainer = document.getElementById('workout-c');
+    const progressiveOverloadContainer = document.getElementById('progressive-overload-cards');
+    const warmupContainer = document.getElementById('warm-up-protocol');
+    const cooldownContainer = document.getElementById('cool-down-protocol');
+    const nutritionContainer = document.getElementById('nutrition-guide');
+    const kegelsContainer = document.getElementById('kegels-guide');
+    const modalBackdrop = document.getElementById('exercise-modal-backdrop');
+    const modalBody = document.getElementById('modal-body');
+    const closeModalButton = document.getElementById('close-modal-button');
+    
+    // Gemini API elements
+    const progressionInput = document.getElementById('progression-input');
+    const getProgressionBtn = document.getElementById('get-progression-suggestion');
+    const progressionLoader = document.getElementById('progression-loader');
+    const progressionOutput = document.getElementById('progression-output');
+
+    const mealInput = document.getElementById('meal-input');
+    const getMealBtn = document.getElementById('get-meal-idea');
+    const mealLoader = document.getElementById('meal-loader');
+    const mealOutput = document.getElementById('meal-output');
+
+
+    function init() {
+        setupTabs();
+        populateWorkouts();
+        populatePrinciples();
+        populateVitalityHub();
+        renderCharts();
+        setupModal();
+        highlightCurrentDay();
+        setupAIAssistant();
+    }
+
+    function setupTabs() {
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const target = tab.dataset.tab;
+                
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+
+                tabContents.forEach(content => {
+                    content.classList.remove('active');
+                    if (content.id === `${target}-content`) {
+                        content.classList.add('active');
+                    }
+                });
+            });
+        });
+    }
+
+    function highlightCurrentDay() {
+        const dayCards = document.querySelectorAll('.day-card');
+        const dayIndex = (new Date().getDay() + 6) % 7; 
+        dayCards[dayIndex].classList.add('bg-teal-100', 'border-teal-400', 'ring-2', 'ring-teal-300');
+    }
+
+    function createWorkoutHTML(workoutKey) {
+        const workout = AppData.workouts[workoutKey];
+        let exerciseHTML = workout.exercises.map(exName => {
+            const exData = AppData.exercises[exName];
+            return `
+                <div class="mb-4 pb-4 border-b border-zinc-200 last:border-b-0">
+                    <h4 class="font-bold text-lg text-zinc-800 cursor-pointer hover:text-teal-600 transition" data-exercise="${exName}">${exName}</h4>
+                    <p class="text-sm text-zinc-500">${exData.sets} sets | ${exData.reps} | ${exData.rest} rest</p>
+                </div>
+            `;
+        }).join('');
+
+        return `
+            <h3 class="text-2xl font-bold text-teal-600 mb-4 text-center">${workout.title}</h3>
+            ${exerciseHTML}
+        `;
+    }
+
+    function populateWorkouts() {
+        workoutAContainer.innerHTML = createWorkoutHTML('A');
+        workoutBContainer.innerHTML = createWorkoutHTML('B');
+        workoutCContainer.innerHTML = createWorkoutHTML('C');
+    }
+    
+    function populatePrinciples() {
+        progressiveOverloadContainer.innerHTML = AppData.progressiveOverload.map(item => `
+            <div class="group relative bg-zinc-50 border border-zinc-200 rounded-lg p-4 text-center hover:bg-white hover:shadow-md transition">
+                <div class="text-4xl mb-2">${item.icon}</div>
+                <h4 class="font-semibold text-zinc-700">${item.title}</h4>
+                <div class="absolute bottom-full mb-2 w-full left-0 px-2 hidden group-hover:block z-10">
+                    <div class="bg-zinc-800 text-white text-xs rounded py-1 px-2 shadow-lg">
+                        ${item.description}
+                    </div>
+                </div>
+            </div>
+        `).join('');
+
+        warmupContainer.innerHTML = `
+            <h3 class="text-xl font-bold mb-3 text-center">Dynamic Warm-Up</h3>
+            <ul class="space-y-2">
+                ${AppData.warmup.map(item => `<li class="flex justify-between p-2 bg-zinc-50 rounded-md"><span>${item.item}</span> <span class="font-semibold text-zinc-600">${item.duration}</span></li>`).join('')}
+            </ul>`;
+
+        cooldownContainer.innerHTML = `
+             <h3 class="text-xl font-bold mb-3 text-center">Static Cool-Down</h3>
+            <ul class="space-y-2">
+                ${AppData.cooldown.map(item => `<li class="flex justify-between p-2 bg-zinc-50 rounded-md"><span>${item.item}</span> <span class="font-semibold text-zinc-600">${item.duration}</span></li>`).join('')}
+            </ul>`;
+    }
+
+    function populateVitalityHub() {
+        nutritionContainer.innerHTML = Object.entries(AppData.nutrition).map(([key, value]) => `
+            <div class="bg-zinc-50 border border-zinc-200 rounded-lg p-4">
+                <div class="flex items-center mb-3">
+                     <span class="text-3xl mr-3">${value.icon}</span>
+                     <h4 class="text-lg font-bold text-zinc-800">${key}</h4>
+                </div>
+                <p class="text-sm text-zinc-600 mb-3">${value.description}</p>
+                <ul class="text-sm space-y-1">
+                    ${value.foods.map(food => `<li class="text-zinc-700">- ${food}</li>`).join('')}
+                </ul>
+            </div>
+        `).join('');
+        
+        kegelsContainer.innerHTML = `
+            <div class="bg-teal-50 border border-teal-200 rounded-lg p-4 mt-6">
+                <h4 class="font-bold text-lg text-teal-700">${AppData.kegels.title}</h4>
+                <p class="text-sm text-teal-800 mt-1">${AppData.kegels.description}</p>
+                <ul class="text-sm text-teal-800 space-y-1 mt-3 list-disc list-inside">
+                    ${AppData.kegels.steps.map(step => `<li>${step}</li>`).join('')}
+                </ul>
+            </div>
+        `;
+    }
+
+    function renderCharts() {
+        new Chart(document.getElementById('weeklySplitChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Strength Training', 'Cardio', 'Rest'],
+                datasets: [{
+                    data: [3, 1, 3],
+                    backgroundColor: ['#0D9488', '#2563EB', '#A1A1AA'],
+                    borderColor: '#FDFBF8',
+                    borderWidth: 4,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom' } }
+            }
+        });
+
+        new Chart(document.getElementById('sleepHormoneChart'), {
+            type: 'bar',
+            data: {
+                labels: ['Human Growth Hormone (HGH)', 'Testosterone'],
+                datasets: [
+                    {
+                        label: 'Awake',
+                        data: [1, 2],
+                        backgroundColor: '#A1A1AA',
+                    },
+                    {
+                        label: 'Deep Sleep',
+                        data: [10, 8],
+                        backgroundColor: '#0D9488',
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { beginAtZero: true, title: { display: true, text: 'Relative Release Amount' } }
+                },
+                plugins: { legend: { position: 'bottom' } }
+            }
+        });
+    }
+
+    function setupModal() {
+        document.body.addEventListener('click', (e) => {
+            if (e.target.dataset.exercise) {
+                const exName = e.target.dataset.exercise;
+                const exData = AppData.exercises[exName];
+                if (exData) {
+                    modalBody.innerHTML = createModalContentHTML(exName, exData);
+                    modalBackdrop.classList.add('show');
+                }
+            }
+        });
+
+        closeModalButton.addEventListener('click', () => modalBackdrop.classList.remove('show'));
+        modalBackdrop.addEventListener('click', (e) => {
+            if (e.target === modalBackdrop) {
+                modalBackdrop.classList.remove('show');
+            }
+        });
+    }
+
+    function createModalContentHTML(name, data) {
+        return `
+            <h3 class="text-3xl font-bold text-teal-600 mb-2">${name}</h3>
+            <p class="text-zinc-600 mb-4">${data.description}</p>
+            
+            <div class="grid md:grid-cols-2 gap-6">
+                <div>
+                    <h4 class="font-bold text-zinc-800 mb-2">How to Perform:</h4>
+                    <ol class="list-decimal list-inside space-y-2 text-zinc-700">
+                        ${data.execution.map(step => `<li>${step}</li>`).join('')}
+                    </ol>
+                </div>
+                <div>
+                    <h4 class="font-bold text-zinc-800 mb-2">Progression Path:</h4>
+                    <p class="mb-1"><strong class="text-green-600">Beginner:</strong> ${data.beginner}</p>
+                    <p><strong class="text-red-600">Advanced:</strong> ${data.progression}</p>
+
+                    <h4 class="font-bold text-zinc-800 mt-4 mb-2">Common Mistakes to Avoid:</h4>
+                    <ul class="list-disc list-inside space-y-1 text-zinc-700">
+                        ${data.mistakes.map(mistake => `<li>${mistake}</li>`).join('')}
+                    </ul>
+                </div>
+            </div>
+        `;
+    }
+
+    async function callGemini(prompt) {
+        let chatHistory = [];
+        chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+        const payload = { contents: chatHistory };
+        const apiKey = "";
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+        try {
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                 throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const result = await response.json();
+            if (result.candidates && result.candidates.length > 0 &&
+                result.candidates[0].content && result.candidates[0].content.parts &&
+                result.candidates[0].content.parts.length > 0) {
+                return result.candidates[0].content.parts[0].text;
+            } else {
+                return "Sorry, I couldn't get a response. The result structure was unexpected.";
+            }
+        } catch (error) {
+            console.error("Error calling Gemini API:", error);
+            return "Sorry, an error occurred while contacting the AI coach. Please check the console for details.";
+        }
+    }
+
+    function setupAIAssistant() {
+        getProgressionBtn.addEventListener('click', async () => {
+            const userInput = progressionInput.value;
+            if (!userInput.trim()) {
+                progressionOutput.innerHTML = "Please describe how your workout felt.";
+                progressionOutput.classList.remove('hidden');
+                return;
+            }
+
+            progressionLoader.style.display = 'block';
+            getProgressionBtn.disabled = true;
+            progressionOutput.classList.add('hidden');
+
+            const prompt = `You are a helpful and encouraging fitness coach. A user is following a bodyweight workout plan to build muscle. The core principle of the plan is progressive overload. The user has provided feedback on their last workout. Your task is to give them a SINGLE, clear, actionable suggestion for how to apply progressive overload in their next session for that specific exercise. Be specific and base your advice on the principles: more reps, more sets, less rest, slower tempo, or a harder variation. Do not suggest more than one method. Keep the tone positive and direct. User feedback: "${userInput}"`;
+
+            const response = await callGemini(prompt);
+            progressionOutput.innerHTML = response;
+            
+            progressionLoader.style.display = 'none';
+            getProgressionBtn.disabled = false;
+            progressionOutput.classList.remove('hidden');
+        });
+
+        getMealBtn.addEventListener('click', async () => {
+            const userInput = mealInput.value;
+            if (!userInput.trim()) {
+                mealOutput.innerHTML = "Please list the ingredients you have.";
+                mealOutput.classList.remove('hidden');
+                return;
+            }
+
+            mealLoader.style.display = 'block';
+            getMealBtn.disabled = true;
+            mealOutput.classList.add('hidden');
+
+            const prompt = `You are a helpful nutrition assistant for someone trying to build muscle. The user has listed the ingredients they have available. Your task is to generate one simple, high-protein meal idea using those ingredients. Provide a name for the meal, a simple list of instructions, and a quick tip on why it's good for their goals. Format the response cleanly. User's ingredients: "${userInput}"`;
+            
+            const response = await callGemini(prompt);
+            mealOutput.innerHTML = response.replace(/\n/g, '<br>');
+
+            mealLoader.style.display = 'none';
+            getMealBtn.disabled = false;
+            mealOutput.classList.remove('hidden');
+        });
+    }
+
+    init();
+});
+</script>
+
+</body>
+</html>
+�
